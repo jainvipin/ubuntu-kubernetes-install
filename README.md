@@ -1,0 +1,156 @@
+
+##Getting started on [Ubuntu](http://www.ubuntu.com)
+
+This is a simple guide to start Kubernetes on one system, which is both master and a minion. Running it across multiple hosts require a multi-host networking of some sort or the network model proposed by kubernetes 
+
+The steps assume that docker is install on the ubuntu system. 
+
+1. Getting the latest binaries
+The first step is to get a latest etcd and kubernetes binaries. This is best done by compiling the binaries yourself using the instructions provided at 
+[Kubernetes Compilation](https://github.com/GoogleCloudPlatform/kubernetes/blob/master/docs/devel/development.md) and [Etcd Compilation](https://github.com/coreos/etcd/tree/master/Documentation)
+
+Here are the steps extracted from the above two links to compile both binaries:
+```
+# Clone and compile etcd (make sure your GOPATH is set)
+mkdir -p $GOPATH/src/github.com/coreos
+cd $GOPATH/src/github.com/coreos/
+git clone https://github.com/coreos/etcd.git
+cd etcd
+./build
+# copy etcd binaries to /opt/bin
+mkdir -p /opt/bin
+cp bin/etcd* /opt/bin
+
+# Clone and compile Kubernetes
+mkdir -p $GOPATH/src/github.com/GoogleCloudPlatform/
+cd $GOPATH/src/github.com/GoogleCloudPlatform/
+git clone https://github.com/GoogleCloudPlatform/kubernetes.git
+
+# $GOPATH must set and $GOPATH/bin in $PATH
+# first install mercurial and godep
+apt-get install mercurial
+go get github.com/tools/godep
+
+# modify git hooks for compile changes
+cd kubernetes/.git/hooks/
+ln -s ../../hooks/prepare-commit-msg .
+ln -s ../../hooks/commit-msg .
+
+# building kubernetes executables
+hack/build-go.sh
+
+# Copy the kubernetes binaries to /opt/bin
+cd $GOPATH/src/github.com/GoogleCloudPlatform/kubernetes/
+cp _output/local/bin/linux/amd64/kube* /opt/bin/
+
+```
+
+Note: if you download [ubuntu-kubernetes-instll](http://github.com/jainvipin/ubuntu-kubernetes-install) it includes the compiled binaries, however these binaries may not be the latest/stable version and wouldn't allow you to experiment with the code if you plan to do that.
+
+2. Setup upstart services to start kubernetes
+
+The second step is to setup following upstart services on the system:
+- Kubernetes Master: etcd, kube-apiserver, kube-controller-manager, kube-scheduler
+- Kubernetes Minion: etcd, kubelet, kube-proxy
+
+your can do the above things on one host sytem by cloning the following git repo and executing the ubuntu-kubernetes-install.sh script
+
+```
+git clone https://www.github.com/jainvipin/ubuntu-kubernetes-install.git
+cd ubuntu-kubernetes-install
+sudo ./ubuntu-kubernetes-install.sh
+```
+
+This will copy appropriate scripts with the default configuration for a single host in the following locations:
+- /etc/init/kube* /etc/init/etcd
+- /etc/init.d/kube* /etc/init.d/etcd
+- /etc/default/kube* and /etc/default/etcd
+These scripts would help upstart to work correctly upon bootup. At this point you can use the service commands to start/stop services associated with kubernetes:
+```
+# on master
+service etcd start
+service kube-apiserver start
+service kube-controller-manager start
+service kube-scheduler start
+
+# on minion
+service etcd start
+service kube-proxy start
+service kubelet start
+
+# similarly restart/stop commands can be used with various services
+```
+
+
+3.  Use and Customize 
+
+Now that Kubernetes relates services are started you are ready to launch the docker apps and have kubernetes schedule them. Using the popular example from Kubernetes website, you can create a redis-master json file, like following
+
+```
+{
+  "id": "redis-master",
+  "kind": "Pod",
+  "apiVersion": "v1beta1",
+  "desiredState": {
+    "manifest": {
+      "version": "v1beta1",
+      "id": "redis-master",
+      "containers": [{
+        "name": "master",
+        "image": "dockerfile/redis",
+        "cpu": 100,
+        "ports": [{
+          "containerPort": 6379,
+          "hostPort": 6379
+        }]
+      }]
+    }
+  },
+  "labels": {
+    "name": "redis-master"
+  }
+}
+```
+
+Then create/delete job using kubecfg command. Also look at the scheduled jobs:
+
+```
+# create a pod
+/opt/bin/kubecfg -h http://127.0.0.1:8080 -c ./redis-master.json create /pods
+Name                Image(s)            Host                Labels              Status
+----------          ----------          ----------          ----------          ----------
+redis-master        dockerfile/redis    <unassigned>        name=redis-master   Pending
+
+# list pods
+/opt/bin/kubecfg -h http://127.0.0.1:8080 -c ./redis-master.json list /pods
+Name                Image(s)            Host                Labels              Status
+----------          ----------          ----------          ----------          ----------
+redis-master        dockerfile/redis    127.0.0.1/          name=redis-master   Running
+
+# fire up the redis-cli and update the db to ensure redis server launched ok
+docker run -t -i dockerfile/redis /usr/local/bin/redis-cli -h 172.17.42.1
+172.17.42.1:6379> 
+172.17.42.1:6379> set name "jainvipin"
+OK
+172.17.42.1:6379> get name
+"jainvipin"
+
+# finally delete the pod
+kubecfg -h http://127.0.0.1:8080 -c ./redis-master.json delete /pods/redis-master
+Status
+----------
+Success
+
+```
+
+4. Customize and run it on multiple hosts
+
+For this you will need to tweak /etc/default/kube* files and restart the services.
+
+If you prefer not to start kubernetes upon startup, then you can modify the 'script' clause in /etc/init/kube*.conf and /etc/init/etcd.conf files.
+
+
+
+Feel free to provide feedback or suggest changes to the above instructions if above mentioned changes do not work for you on a Ubuntu 14.04 or onwards.
+
+
