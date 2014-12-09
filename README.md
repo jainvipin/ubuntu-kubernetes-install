@@ -1,11 +1,14 @@
-
 ##Getting started on [Ubuntu](http://www.ubuntu.com)
 
-This is a simple guide to start Kubernetes on one system, which is both master and a minion. Running it across multiple hosts require a multi-host networking of some sort or the network model proposed by kubernetes 
+This guide describes ways to start Kubernetes on a single host system i.e. both master and a minion on the same host. Running it across multiple hosts require a multi-host networking accordingly to the network model proposed by kubernetes.
 
-The steps assume that docker is install on the ubuntu system. 
+The steps assume that docker is installed on the ubuntu system. The document is divided into 4 parts:
+ 1. Getting the latest binaries
+ 2. Configure Upstart scripts to start kubernetes
+ 3. Using Kubernetes
+ 4. Customizing the ubuntu launch
 
-1. Getting the latest binaries
+## 1. Getting the latest binaries
 The first step is to get a latest etcd and kubernetes binaries. This is best done by compiling the binaries yourself using the instructions provided at 
 [Kubernetes Compilation](https://github.com/GoogleCloudPlatform/kubernetes/blob/master/docs/devel/development.md) and [Etcd Compilation](https://github.com/coreos/etcd/tree/master/Documentation)
 
@@ -47,7 +50,7 @@ cp _output/local/bin/linux/amd64/kube* /opt/bin/
 
 Note: if you download [ubuntu-kubernetes-instll](http://github.com/jainvipin/ubuntu-kubernetes-install) it includes the compiled binaries, however these binaries may not be the latest/stable version and wouldn't allow you to experiment with the code if you plan to do that.
 
-2. Setup upstart services to start kubernetes
+## 2. Configure Upstart scripts to start kubernetes
 
 The second step is to setup following upstart services on the system:
 - Kubernetes Master: etcd, kube-apiserver, kube-controller-manager, kube-scheduler
@@ -82,9 +85,9 @@ service kubelet start
 ```
 
 
-3.  Use and Customize 
+## 3. Using Kubernetes
 
-Now that Kubernetes relates services are started you are ready to launch the docker apps and have kubernetes schedule them. Using the popular example from Kubernetes website, you can create a redis-master json file, like following
+Now that Kubernetes related services should be up and running which you can confirm this using 'service etcd status' or 'ps aux | grep etcd'. If all looks okay, you are ready to launch the docker apps and have kubernetes schedule them. Using the popular example from Kubernetes website, you can create a redis-master.json file, like following
 
 ```
 {
@@ -143,7 +146,7 @@ Success
 
 ```
 
-4. Customize and run it on multiple hosts
+## 4. Customizing the ubuntu launch
 
 For this you will need to tweak /etc/default/kube* files and restart the services.
 
