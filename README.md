@@ -2,6 +2,15 @@
 
 This guide describes ways to start Kubernetes on a single host system i.e. both master and a minion on the same host. Running it across multiple hosts require a multi-host networking accordingly to the network model proposed by kubernetes.
 
+If you just want to get going fast without knowing the details, you can do the following to bring up a single host cluster (etcd, and kube binaries as upstart services)
+```
+$ git clone https://www.github.com/jainvipin/ubuntu-kubernetes-install.git
+$ cd ubuntu-kubernetes-install
+$ sudo ./ubuntu-kubernetes-install.sh
+```
+
+TL;DR
+
 The steps assume that docker is installed on the ubuntu system. The document is divided into 4 parts:
  1. Getting the latest binaries
  2. Configure Upstart scripts to start kubernetes
